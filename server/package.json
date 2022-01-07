@@ -1,0 +1,21 @@
+{
+	"name": "auto-command-server",
+	"version": "1.0.0",
+	"main": "app.js",
+	"license": "MIT",
+	"scripts": {
+		"run": "node app.js"
+	},
+	"dependencies": {
+		"alasql": "^1.7.3",
+		"asn1": "^0.2.6",
+		"bcrypt-pbkdf": "^1.0.2",
+		"express": "4.17.2",
+		"multer": "1.4.4",
+		"ws": "8.4.0"
+	},
+	"type": "commonjs",
+	"engines": {
+		"node": ">= 16.0.0"
+	}
+}
