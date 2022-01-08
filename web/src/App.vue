@@ -101,7 +101,7 @@ onMounted(() => {
 			line-height: 59px;text-align: center;color: #409EFF;font-size: 20px;
 		}
 		.right {
-			position: absolute;right: 0;top: 1px;bottom: 0; color: #fefefea6; font-size: 7px; max-width: 520px;
+			position: absolute;right: 0;top: 1px;bottom: 0; color: #fefefea6; font-size: 12px; max-width: 520px;
 			span, em { display: inline-block; line-height: 16px; height: 16px;overflow: hidden;text-overflow:ellipsis;white-space: nowrap; }
 			em { width: 70px;  }
 			span { width: calc(100% - 70px); }

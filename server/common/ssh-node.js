@@ -31,16 +31,15 @@ function unixifyPath(path) {
 }
 
 class NodeSSH extends EventEmitter {
+	connection = undefined
 	server = undefined
 	sftp = undefined
 	config = {}
-	
 	
     constructor(server, config = { privateKey: '' }) {
 		super()
 	    this.server = Object.assign({ port: 22, user: 'root' }, server)
 	    this.config = config
-        this.connection = null;
 	    if (config.privateKey) {
 		    if (!((config.privateKey.includes('BEGIN') && config.privateKey.includes('KEY')) ||
 			    config.privateKey.includes('PuTTY-User-Key-File-2'))) {
@@ -59,13 +58,15 @@ class NodeSSH extends EventEmitter {
 	static async createConnect(server, config = {}){
 		const ssh = new NodeSSH(server, config)
 		await ssh.connect()
+		const connect = ssh.getConnection()
+		connect.on('error', () => {}).on('close', () => { ssh.connection = null })
 		await ssh.requestSFTP()
 		return ssh
 	}
 	
     getConnection() {
         const { connection } = this;
-        if (connection == null) {
+        if (!connection) {
             throw new Error('Not connected to server');
         }
         return connection;
