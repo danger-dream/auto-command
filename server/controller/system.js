@@ -63,7 +63,7 @@ function getSystemInfo(push){
 				cpu,
 				mem: calcMem()
 			}
-			push('systemInfo', res, 'base')
+			push('system', res, 'base')
 		}catch {}
 		getSystemInfo(push)
 	}).catch(() => {

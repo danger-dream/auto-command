@@ -3,6 +3,7 @@ import {provide, onMounted, reactive, nextTick, watch, computed} from 'vue'
 import {ElLoading} from "element-plus"
 import {getQueryVariable, getOSIcon, calcTime, formatByteSizeToStr} from '../Utils'
 import {IServer, RemoteSystemInfo} from '../types'
+import IconFont from '../iconfont.vue';
 import WebSocketClient from "../lib/WebSocketClient";
 import YLEventEmitter from "../lib/YLEventEmitter";
 import Explorer from './Explorer.vue'
@@ -12,13 +13,19 @@ import {FitAddon} from "xterm-addon-fit";
 import 'xterm/css/xterm.css'
 import 'xterm/lib/xterm.js'
 
-const ws = new WebSocketClient('/api/webssh')
+
+const ws = new WebSocketClient('/api/shell')
 const emitter = new YLEventEmitter()
+const uuid = getQueryVariable('uuid')
+if (!uuid){
+	alert('未获取到密钥')
+	window.close()
+}
 provide('ws', ws)
 provide('event', emitter)
+provide('uuid', uuid)
 const state = reactive({
 	view: 'shell',
-	uuid: getQueryVariable('uuid'),
 	server: {} as IServer,
 	ready: false,
 	systemInfo: {
@@ -42,11 +49,6 @@ watch(() => state.view, (val: string) => {
 })
 
 onMounted(async () => {
-	if (!state.uuid){
-		alert('未获取到随机密钥')
-		window.close()
-		return
-	}
 	let loadingInstance = ElLoading.service({
 		fullscreen: true, body: true, lock: true,
 		text: '正在连接服务器...'
@@ -63,7 +65,7 @@ onMounted(async () => {
 	})
 	await ws.start()
 	
-	function createTerm(id: string){
+	function createTerm(){
 		term = new Terminal({
 			rendererType: 'canvas',
 			cursorBlink: true,
@@ -77,7 +79,7 @@ onMounted(async () => {
 		term.focus()
 		term.writeln('Connecting...');
 		term.onData(function (key: any){
-			ws.sendSimple('webssh.sendWEBSSHMsg', { id, action: 'input', data: key })
+			ws.sendSimple('shell.send', { id: uuid, action: 'input', data: key })
 		})
 	}
 	
@@ -86,7 +88,7 @@ onMounted(async () => {
 			fitAddon && fitAddon.fit()
 		}catch {}
 		try {
-			ws.sendSimple('server.sendWEBSSHMsg', { id: state.uuid, action: 'resize', data: { rows: term.rows, cols: term.cols } })
+			ws.sendSimple('shell.send', { id: uuid, action: 'resize', data: { rows: term.rows, cols: term.cols } })
 		}catch {}
 	})
 	
@@ -94,22 +96,28 @@ onMounted(async () => {
 		connected = true
 		fitAddon.fit();
 		term.writeln('connect success..')
-		ws.sendSimple('webssh.sendWEBSSHMsg', { id: state.uuid, action: 'resize', data: { rows: term.rows, cols: term.cols } })
+		ws.sendSimple('shell.send', { id: uuid, action: 'resize', data: { rows: term.rows, cols: term.cols } })
 	}
 	
 	async function connectSSH(){
 		try {
-			state.server = await ws.send('webssh.getByUUID', state.uuid)
+			state.server = await ws.send('shell.getServerInfo', uuid)
 		}catch(e: any) {
 			alert('获取服务器信息失败:' + e.message)
 			window.close()
 			return
 		}
-		window.document.title = 'WebSSH - ' + state.server.name + ' - ' + state.server.sys
-		ws.on(state.uuid, function (body: any){
+		window.document.title = state.server.name + ' - ' + state.server.sys
+		ws.on(uuid, function (body: any){
 			const {event, data} = body
-			if (event.startsWith('server.system')){
-				emitter.emit('server.system', data)
+			if (event.startsWith('system.')){
+				emitter.emit('system', data)
+				Object.assign(state.systemInfo, data)
+				if (event.endsWith('process')){
+					setRunTime()
+				}else if (event.endsWith('net')){
+					getNetwork()
+				}
 			}
 			switch (event){
 				case 'error':
@@ -117,7 +125,7 @@ onMounted(async () => {
 					return;
 				case 'exit':
 					connected = false
-					term.writeln('webssh exit!')
+					term.writeln('shell exit!')
 					alert('与远程服务器的连接已断开')
 					return;
 				case 'data':
@@ -126,27 +134,13 @@ onMounted(async () => {
 					}
 					term.write(data)
 					return;
-				case 'server.system.base':
-					Object.assign(state.systemInfo, data)
-					return;
-				case 'server.system.process':
-					Object.assign(state.systemInfo, data)
-					setRunTime()
-					return;
-				case 'server.system.cpu':
-					Object.assign(state.systemInfo, data)
-					return;
-				case 'server.system.net':
-					Object.assign(state.systemInfo, data)
-					getNetwork()
-					return;
 			}
 		})
 		state.view = 'shell'
 		state.ready = true
 		await nextTick()
-		createTerm(state.uuid)
-		await ws.send('webssh.startWEBSSH', state.uuid)
+		createTerm()
+		await ws.send('shell.start', uuid)
 	}
 })
 
@@ -171,6 +165,7 @@ const getMem = computed(() => {
 </script>
 
 <template>
+	<icon-font></icon-font>
 	<div class="header">
 		<div class="title">
 			<svg class="os-iconfont" aria-hidden="true">

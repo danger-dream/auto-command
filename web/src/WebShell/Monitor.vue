@@ -1,14 +1,14 @@
 <script lang="ts" setup>
 import {Refresh} from '@element-plus/icons-vue'
 import { reactive, inject, computed } from 'vue'
-import YLEventEmitter from "../lib/YLEventEmitter";
+import type YLEventEmitter from "../lib/YLEventEmitter";
 import {IServer, RemoteSystemInfo} from "../types";
 import { formatSizeToStr, formatByteSizeToStr } from '../Utils'
 
 const event = inject('event') as YLEventEmitter
 const state = reactive({
 	server: {} as IServer,
-	systemInfo: {
+	info: {
 		hostname: '-',
 		uptime: '',
 		cpu: 0,
@@ -17,24 +17,23 @@ const state = reactive({
 		disks: [],
 		network: []
 	} as RemoteSystemInfo,
-	
 })
 
 event.on('set-server', function (server: IServer){
 	Object.assign(state.server, server)
-}).on('server.system', function (data: any){
-	Object.assign(state.systemInfo, data)
+}).on('system', function (data: any){
+	Object.assign(state.info, data)
 })
 
 const mem = computed(() => {
-	if (!state.systemInfo.mem || !state.systemInfo.mem['mem']) return { ratio: '-', total: 0, free: 0, used: 0 }
-	return state.systemInfo.mem['mem']
+	if (!state.info.mem || !state.info.mem['mem']) return { ratio: '-', total: 0, free: 0, used: 0 }
+	return state.info.mem['mem']
 })
 
 const network = computed(() => {
 	const res = { dev: '', ip: '', download: 0, upload: 0, down_speed: 0, up_speed: 0 }
-	if (state.systemInfo.network.length < 1) return res
-	const net = state.systemInfo.network.find(x => x.ip === state.server.host)
+	if (state.info.network.length < 1) return res
+	const net = state.info.network.find(x => x.ip === state.server.host)
 	if (!net) return res
 	return net
 })
@@ -54,7 +53,7 @@ const network = computed(() => {
 					</div>
 					<div class="card-panel-description">
 						<div class="card-panel-text"> CPU使用率 </div>
-						<span class="card-panel-num"> {{ state.systemInfo.cpu }}% </span>
+						<span class="card-panel-num"> {{ state.info.cpu }}% </span>
 					</div>
 				</div>
 			</el-col>
@@ -114,11 +113,11 @@ const network = computed(() => {
 								<use xlink:href="#icon-process"></use>
 							</svg>
 						</el-icon>
-						<div class="title">进程列表<span>({{ state.systemInfo.activities.length }})</span></div>
-						<el-button :icon="Refresh" circle class="btn" @click="state.systemInfo.activities.splice(0, state.systemInfo.activities.length)"/>
+						<div class="title">进程列表<span>({{ state.info.activities.length }})</span></div>
+						<el-button :icon="Refresh" circle class="btn" @click="state.info.activities.splice(0, state.info.activities.length)"/>
 					</div>
 					<div class="view">
-						<el-table :data="state.systemInfo.activities" size="small" border highlight-current-row height="100%">
+						<el-table :data="state.info.activities" size="small" border highlight-current-row height="100%">
 							<el-table-column prop="pid" label="PID" sortable width="70" align="center"/>
 							<el-table-column prop="user" label="用户" sortable width="70" align="center"/>
 							<el-table-column prop="cpu" label="CPU" sortable width="70" align="center">
@@ -145,11 +144,11 @@ const network = computed(() => {
 								<use xlink:href="#icon-network"></use>
 							</svg>
 						</el-icon>
-						<div class="title">网卡列表<span>({{ state.systemInfo.network.length }})</span></div>
-						<el-button :icon="Refresh" circle class="btn" @click="state.systemInfo.network.splice(0, state.systemInfo.network.length)"/>
+						<div class="title">网卡列表<span>({{ state.info.network.length }})</span></div>
+						<el-button :icon="Refresh" circle class="btn" @click="state.info.network.splice(0, state.info.network.length)"/>
 					</div>
 					<div class="view">
-						<el-table :data="state.systemInfo.network" size="small" border highlight-current-row height="100%">
+						<el-table :data="state.info.network" size="small" border highlight-current-row height="100%">
 							<el-table-column prop="dev" label="设备名称" sortable align="center" show-overflow-tooltip/>
 							<el-table-column prop="ip" label="IP" sortable width="120" align="center" show-overflow-tooltip/>
 							<el-table-column prop="download" label="总下载" sortable width="80" align="center">
@@ -176,11 +175,11 @@ const network = computed(() => {
 								<use xlink:href="#icon-disk"></use>
 							</svg>
 						</el-icon>
-						<div class="title">文件系统<span>({{ state.systemInfo.disks.length }})</span></div>
-						<el-button :icon="Refresh" circle class="btn" @click="state.systemInfo.disks.splice(0, state.systemInfo.disks.length)"/>
+						<div class="title">文件系统<span>({{ state.info.disks.length }})</span></div>
+						<el-button :icon="Refresh" circle class="btn" @click="state.info.disks.splice(0, state.info.disks.length)"/>
 					</div>
 					<div class="view">
-						<el-table :data="state.systemInfo.disks" size="small" border highlight-current-row height="100%">
+						<el-table :data="state.info.disks" size="small" border highlight-current-row height="100%">
 							<el-table-column prop="filesystem" label="文件系统" sortable width="120" show-overflow-tooltip/>
 							<el-table-column prop="size" label="容量" sortable width="70" align="center"></el-table-column>
 							<el-table-column prop="used" label="已用" sortable width="70" align="center"></el-table-column>

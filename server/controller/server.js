@@ -1,40 +1,39 @@
 const KVStore = require('../common/KVStore.js')
-const shell = require('../common/ssh-node.js')
+const NodeSSH = require('../common/NodeSSH.js')
 const store = new KVStore('server.json')
 
 async function getServerSystemInfo(item, cb){
-	const client = new shell(item)
+	const nodeSSH = new NodeSSH(item)
 	try {
 		try {
-			await client.connect()
+			await nodeSSH.connect()
 			item.state = '连接正常'
 		}catch (e) {
 			item.state = e.message
 			return cb()
 		}
-		item.sys = (await client.exec(`cat /etc/os-release | grep 'PRETTY_NAME='`)).replaceAll('"', '').trim().split('=')[1]
-		item.arch = (await client.exec(`uname -m;`)).trim()
-		item.mode = await client.exec('getconf LONG_BIT')
-		item.cpu = (await client.exec(`cat /proc/cpuinfo |grep 'processor'|wc -l`)).trim() + '核'
+		item.sys = (await nodeSSH.exec(`cat /etc/os-release | grep 'PRETTY_NAME=' | cut -f2 -d=`)).replaceAll('"', '').trim()
+		item.arch = (await nodeSSH.exec(`uname -m;`)).trim()
+		item.mode = await nodeSSH.exec('getconf LONG_BIT')
+		item.cpu = (await nodeSSH.exec(`cat /proc/cpuinfo |grep 'processor'|wc -l`)).trim() + '核'
 		try {
-			item.mem = (await client.exec(`cat /proc/meminfo | grep MemTotal | cut -f2 -d:`)).replace('kB', '')
+			item.mem = (await nodeSSH.exec(`cat /proc/meminfo | grep MemTotal | cut -f2 -d:`)).replace('kB', '')
 			item.mem = (Number(item.mem.trim()) / 1024/1024).toFixed(2) + 'GB'
 		}catch {}
 		
 		try {
-			let disk = (await client.exec('lsblk | grep disk')).replaceAll('\r', '').split('\n')
+			let disk = (await nodeSSH.exec('lsblk | grep disk')).replaceAll('\r', '').split('\n')
 			let diskNum = 0
 			for (const item of disk){
 				diskNum += Number((item).trim().split(' ').filter(x => !!x)[3].replace('G', ''))
 			}
 			item.disk = diskNum + 'GB'
 		}catch {}
-		
 	}
 	catch {}
 	finally {
 		try {
-			await client.close()
+			await nodeSSH.close()
 		}catch {}
 	}
 	cb()
@@ -52,7 +51,6 @@ module.exports = {
 		})
 	},
 	insert(body){
-		new shell({})
 		return store.insert(body)
 	},
 	update(body){
@@ -64,7 +62,7 @@ module.exports = {
 	remove(id){
 		return store.remove(id)
 	},
-	refreshSysInfo(id, client){
+	refresh(id, client){
 		if (loadingInfo) return
 		loadingInfo = true
 		const list = id ? [store.getById(id)] : store.list(1, 9999)

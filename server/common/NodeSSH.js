@@ -414,6 +414,34 @@ class NodeSSH extends EventEmitter {
 		}
 	}
 	
+	async users(){
+		try {
+			const userStr = await this.exec(`cat /etc/passwd`)
+			const users = []
+			for (const item of userStr.split('\n')){
+				const arr = item.split(':')
+				users.push({ id: Number(arr[2]), name: arr[4] })
+			}
+			return users
+		}catch {
+			return []
+		}
+	}
+	
+	async groups(){
+		try {
+			const groupStr = await this.exec('cat /etc/group')
+			const groups = []
+			for (const item of groupStr.split('\n')){
+				const arr = item.split(':')
+				groups.push({ id: Number(arr[2]), name: arr[0] })
+			}
+			return  groups
+		}catch {
+			return []
+		}
+	}
+	
 	close() {
         if (this.connection) {
             this.connection.end();

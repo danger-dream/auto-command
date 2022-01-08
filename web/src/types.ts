@@ -1,10 +1,7 @@
 export enum ServerState {
 	not_connect = '未连接',
 	success = '连接正常',
-	params_error = '参数错误',
-	passwd_error = '账号密码错误',
 	timeout = '连接超时',
-	connect_error = '连接失败',
 	connecting = '连接中...'
 }
 
@@ -69,4 +66,28 @@ export interface RemoteSystemInfo {
 		down_speed: number
 		up_speed: number
 	}[]
+}
+
+export interface TabInfo {
+	label: string
+	name: string
+	componentName: string
+	icon: string
+	params: any
+}
+
+export enum TreeNodeType {
+	public = 0,
+	dir = 1,
+	file = 2,
+	task = 3
+}
+
+export interface TreeNode {
+	id: string
+	label: string
+	type: TreeNodeType
+	source: any
+	children: TreeNode[]
+	router: boolean
 }

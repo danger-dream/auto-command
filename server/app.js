@@ -1,7 +1,7 @@
 const {existsSync} = require('fs')
 const express = require('express')
-const ExpressWs = require("./common/expressWs.js");
-const { register } = require("./registerController.js");
+const ExpressWs = require("./common/ExpressWs.js");
+const { register } = require("./RegisterController.js");
 const history = require('./common/history-api-fallback.js');
 
 const port = 3010

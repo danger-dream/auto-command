@@ -8,7 +8,7 @@ export default defineConfig({
 		rollupOptions: {
 			input: {
 				main: resolve(__dirname, 'index.html'),
-				webssh: resolve(__dirname, 'webssh.html')
+				shell: resolve(__dirname, 'shell.html')
 			}
 		}
 	},

@@ -2,7 +2,13 @@
 import {nextTick, reactive, ref, inject} from 'vue'
 import {IServer,ServerState} from './types'
 import {copy, deepClone, formValidate, resetForm, tip, getOSIcon} from './Utils'
-import WebSocketClient from "./lib/WebSocketClient";
+import type WebSocketClient from "./lib/WebSocketClient";
+
+const ws = inject('ws') as WebSocketClient
+const ServerJson = {
+	id: '', name: '', host: '', port: 22, user: '', pwd: '',
+	sys: '-', arch: '-', cpu: '-', mem: '-', disk: '-', state: ServerState.not_connect
+} as IServer
 
 const rules = reactive({
 	name: [{ required: true, message: '请输入服务器名称', trigger: 'blur' }],
@@ -12,19 +18,15 @@ const rules = reactive({
 	pwd: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 })
 
-const ServerJson = {
-	id: '', name: '', host: '', port: 22, user: '', pwd: '',
-	sys: '-', arch: '-', cpu: '-', mem: '-', disk: '-', state: ServerState.not_connect
-} as IServer
 
 const formRef = ref<any>()
 const state = reactive({
 	list: [] as IServer[],
 	form: deepClone(ServerJson) as IServer,
-	dialogVisible: false,
+	dialogVisible: false
 })
 
-const ws = inject('ws') as WebSocketClient
+
 ws.onReady('server', reload)
 ws.on('server.refresh', function (item: any){
 	if (!item.id) return
@@ -32,14 +34,15 @@ ws.on('server.refresh', function (item: any){
 	if (index === -1) return;
 	Object.assign(state.list[index], item)
 	
-}).on('webssh.createWEBSSH', function (msg: any){
-	let id = msg.id
-	if (!msg || !id) return
+}).on('shell.create', function (data: any){
+	const id = data.id
+	if (!id) return
 	ws.on(id, function handleReady(body: {event: string, data: any}){
 		if (body.event !== 'ready') return
 		ws.off(id, handleReady)
-		window.open(window.location.origin + '/webssh.html?uuid=' + id)
+		window.open(window.location.origin + '/shell.html?uuid=' + id)
 	})
+	console.log('on ready')
 })
 
 async function reload() {
@@ -66,9 +69,11 @@ function onEdit(row: IServer){
 	state.dialogVisible = true
 }
 
-function onCopy(row: IServer){
-	state.form = deepClone(row)
-	Object.assign(state.form, { id: '', sys: '-', arch: '-', cpu: '-', mem: '-', disk: '-', state: ServerState.not_connect })
+function onCopy(row: any){
+	clear()
+	for (const item of ['name', 'host', 'port', 'user']){
+		(state.form as any)[item] = row[item]
+	}
 	state.dialogVisible = true
 }
 
@@ -77,10 +82,6 @@ async function onDelete(row: IServer){
 	const res = await ws.send('server.remove', row.id)
 	tip[res ? 'success': 'error'](`删除服务器${ res ? '成功': '失败' }`)
 	await reload()
-}
-
-function onCopyServer(row: IServer) {
-	copy(`${ row.user }@${ row.host } -p ${ row.port }`)
 }
 
 async function onSave(){
@@ -107,7 +108,7 @@ async function onSave(){
 }
 
 async function onRefreshInfo(row: IServer){
-	ws.send('server.refreshSysInfo', row ? row.id : undefined).catch(() => {})
+	ws.send('server.refresh', row ? row.id : undefined).catch(() => {})
 }
 
 function getColor(row: IServer){
@@ -120,7 +121,7 @@ function getColor(row: IServer){
 }
 
 function onOpenSSH(serverId: string){
-	ws.send('webssh.requestWEBSSH', serverId)
+	ws.send('shell.request', serverId)
 }
 
 </script>
@@ -142,7 +143,7 @@ function onOpenSSH(serverId: string){
 				</el-table-column>
 				<el-table-column prop="host" label="服务器地址" sortable align="center" width="220" show-overflow-tooltip>
 					<template #default="{row}">
-						<span style="cursor: pointer;" @click="onCopyServer(row)">
+						<span style="cursor: pointer;" @click="copy(`${ row.user }@${ row.host } -p ${ row.port }`)">
 							{{ row.user }}@{{ row.host }} -p {{ row.port }}
 						</span>
 					</template>
@@ -174,7 +175,7 @@ function onOpenSSH(serverId: string){
 					<template #default="{ row }">
 						<el-button type="text" @click="onEdit(row)">编辑</el-button>
 						<el-button type="text" @click="onCopy(row)" style="color: #E6A23C;">复制</el-button>
-						<el-button type="text" style="color: #F56C6C;" @click="onDelete(row)">删除</el-button>
+						<el-button type="text" @click="onDelete(row)" style="color: #F56C6C;">删除</el-button>
 					</template>
 				</el-table-column>
 			</el-table>

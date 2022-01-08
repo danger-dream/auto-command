@@ -8,17 +8,6 @@ interface Result {
 	reject(e: Error): void
 }
 
-export const enum ConnectedStatus {
-	/**
-	 * 失败
-	 */
-	Wrong,
-	/**
-	 * 已连接
-	 */
-	Connected
-}
-
 export default class WebSocketClient extends YLEventEmitter {
 	private readyFn: Record<string, Function> = {}
 	private closeFn: Record<string, Function> = {}
@@ -39,12 +28,10 @@ export default class WebSocketClient extends YLEventEmitter {
 			try {
 				if (this.isConnect)
 					return reslove()
-				let status = ConnectedStatus.Wrong
 				const self = this
 				const baseUrl = window.location.origin.replace('http', 'ws')
 				const ws = this.ws = new WebSocket(baseUrl + this.url)
 				ws.onopen = function () {
-					status = ConnectedStatus.Connected
 					self.isConnect = true
 					for (const k of Object.keys(self.readyFn)){
 						try {

@@ -1,5 +1,5 @@
-const utf8 = require('../common/utf8')
-const Shell = require('../common/ssh-node')
+const utf8 = require('../common/Utf8')
+const NodeSSH = require('../common/NodeSSH')
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 let server = undefined
@@ -20,7 +20,7 @@ async function closeShell(){
 async function createShell(){
 	await closeShell()
 	try {
-		shell = await Shell.createConnect(server)
+		shell = await NodeSSH.createConnect(server)
 		stream = await shell.shell()
 		stream.on('data', function (buf){
 			process.send({ event: 'data', data: utf8(buf.toString('binary')) })
@@ -64,7 +64,7 @@ process.on('message', async function ({ action, data }){
 
 //  发送系统信息
 function sendSystemInfo(type, data){
-	process.send({ event: 'server.system.' + type, data })
+	process.send({ event: 'system.' + type, data })
 }
 
 //  处理hostname、disk

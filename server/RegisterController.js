@@ -1,12 +1,11 @@
 const { readdirSync } = require('fs')
-const {join} = require('path')
+const {join, parse} = require('path')
 
 function uuid(){
 	const S4 = () => (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1)
 	return S4() + S4() + S4() + S4() + S4() + S4() + S4() + S4()
 }
 
-const controllerMap = {}
 const clients = []
 
 function push(action, data, type = ''){
@@ -16,7 +15,6 @@ function push(action, data, type = ''){
 
 function createClient(ws, req){
 	const uid = uuid()
-	let userClose = false
 	const client = {
 		type: req.params.type || 'base',
 		uid,
@@ -33,7 +31,6 @@ function createClient(ws, req){
 		},
 		close(){
 			try {
-				userClose = true
 				ws.close()
 			}catch {}
 		}
@@ -42,7 +39,7 @@ function createClient(ws, req){
 	ws.on('close', function (){
 		try {
 			for (const fn of client.exitFn){
-				fn(userClose)
+				fn()
 			}
 		}catch {}
 		clients.splice(clients.findIndex(x => x.uid === uid), 1)
@@ -67,10 +64,9 @@ function createClient(ws, req){
 	})
 }
 
-exports.websocketClients = clients
-
-exports.getAction = function (action){
-	return controllerMap[action]
+const controllerMap = {}
+exports.invoke = function (action, ...params){
+	return controllerMap[action].apply(undefined, params)
 }
 
 exports.register = function (app) {
@@ -79,13 +75,13 @@ exports.register = function (app) {
 	const rootPath = join(process.cwd(), './controller')
 	for (const file of readdirSync(rootPath)){
 		const module = require(join(rootPath, file))
-		const filename = file.split('.')[0]
+		const {name} = parse(file)
 		for (const key of Object.keys(module)){
 			if (key === 'init'){
 				module.init(app, push)
 				continue
 			}
-			const keyName = `${ filename }.${ key }`
+			const keyName = `${ name }.${ key }`
 			controllerMap[keyName] = module[key]
 			console.log(`注册方法: ${ keyName }`)
 		}

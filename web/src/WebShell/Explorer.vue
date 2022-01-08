@@ -2,7 +2,6 @@
 import {watch, inject, reactive, computed, nextTick, ref} from 'vue'
 import { FolderAdd, Upload, Search, Location, Refresh } from '@element-plus/icons-vue'
 import WebSocketClient from "../lib/WebSocketClient";
-import {IServer} from "../types";
 import YLEventEmitter from "../lib/YLEventEmitter";
 import { date_format, formatByteSizeToStr, copy, tip, deepClone } from '../Utils'
 import axios from "axios";
@@ -10,19 +9,21 @@ import {ElLoading} from "element-plus/es";
 
 const upload = ref<any>(null)
 const uploadDir = ref<any>(null)
+const uuid = inject('uuid') as string
 const ws = inject('ws') as WebSocketClient
 const event = inject('event') as YLEventEmitter
+
 type FileInfo = {
 	path: string, type: string, name: string, power: string, powerNum: number, powerInfo: string,
 	userGroup: string, mtime: number, atime: number, isDir: boolean, isFile: boolean, size: number,
 	mode: number, attrs: { mode: number, gid: number, uid: number, size: number }
 }
+
 const tableView = ref<any>(null)
 const state = reactive({
 	searchValue: '',
 	path: '/',
 	queryFiles: [] as FileInfo[],
-	server: {} as IServer,
 	dialogVisible: false,
 	form: {} as FileInfo,
 	powerCheck: {
@@ -69,7 +70,7 @@ function moveCurrentRow(down: boolean){
 }
 
 function handleKeyUp(e: KeyboardEvent){
-	if ((e.target && (e.target as any).nodeName === 'input') || state.loading) return;
+	if ((e.target && (e.target as any).nodeName === 'input') || state.loading || state.dialogVisible) return;
 	if (e.code === 'Backspace'){
 		if (state.searchValue.length > 0){
 			state.searchValue = state.searchValue.substring(0, state.searchValue.length - 1)
@@ -89,7 +90,7 @@ function handleKeyUp(e: KeyboardEvent){
 	}
 }
 
-event.on('set-server', async function (server: IServer, type: string){
+event.on('set-server', async function (server: any, type: string){
 	window.removeEventListener('keyup', handleKeyUp)
 	if (document.activeElement){
 		try {
@@ -99,7 +100,6 @@ event.on('set-server', async function (server: IServer, type: string){
 	if (type !== 'sftp') return
 	window.addEventListener('keyup', handleKeyUp)
 	if (state.path !== '/' || files.length > 0) return
-	state.server = server
 	await reloadFileList()
 })
 
@@ -172,7 +172,7 @@ async function reloadFileList(){
 	currentRow = undefined
 	state.loading = true
 	try {
-		const res = await ws.send('webssh.readdir', { path: state.path, id: state.server.id })
+		const res = await ws.send('shell.readdir', { path: state.path, id: uuid })
 		const list = [] as FileInfo[]
 		for (const item of res){
 			const type = item.longname[0]
@@ -198,7 +198,7 @@ async function reloadFileList(){
 
 function router(path: string, fileInfo?: FileInfo){
 	if (fileInfo && fileInfo.isFile){
-		window.open(`${ window.location.origin }/server/download?id=${ state.server.id }&path=${ encodeURI(path) }`)
+		window.open(`${ window.location.origin }/shell/download?id=${ uuid }&path=${ encodeURI(path) }`)
 		return
 	}
 	if (!fileInfo || (fileInfo && fileInfo.isDir)){
@@ -220,7 +220,7 @@ async function onMkdir(){
 	if (files.find(x => x.name === name)) {
 		return tip.error('目录名称已存在')
 	}
-	await ws.send('webssh.mkdir', { id: state.server.id, name })
+	await ws.send('shell.mkdir', { id: uuid, name })
 	await reloadFileList()
 }
 
@@ -233,18 +233,18 @@ async function onRename(row: FileInfo) {
 	if (files.find(x => x.name === name)) {
 		return tip.error('名称已存在')
 	}
-	await ws.send('webssh.move', { id: state.server.id, path: row.path, name })
+	await ws.send('shell.move', { id: uuid, path: row.path, name })
 	await reloadFileList()
 }
 
 async function onDelete(row: FileInfo) {
 	if (!await tip.confirm('该操作存在风险，请确认是否删除该文件/文件夹？', 'warning')) return
-	await ws.send('webssh.remove', { id: state.server.id, path: row.path })
+	await ws.send('shell.remove', { id: uuid, path: row.path })
 	await reloadFileList()
 }
 
 async function onExitPower(row: FileInfo){
-	Object.assign(state.userGroups, await ws.send('webssh.getUserGroups', state.server.id))
+	Object.assign(state.userGroups, await ws.send('shell.getUserGroups', uuid))
 	Object.assign(state.form, deepClone(row))
 	const mode = row.mode
 	state.powerCheck.user.r = (mode & 0b100000000) === 0b100000000
@@ -269,7 +269,7 @@ function onUploadFiles(e: any){
 	const { target } = e
 	if (!target || !target.files || target.files.length < 1) return
 	const fd = new FormData()
-	fd.append('id', state.server.id + '')
+	fd.append('id', uuid)
 	fd.append('path', state.path)
 	for (const item of e.target.files){
 		fd.append("attachment", item);
@@ -278,7 +278,7 @@ function onUploadFiles(e: any){
 		fullscreen: true, body: true, lock: true,
 		text: '正在上传文件，请稍后...'
 	}) as any
-	axios.post('/server/upload', fd).then((res) => {
+	axios.post('/shell/upload', fd).then((res) => {
 		loadingInstance.close()
 		if (res.data?.success){
 			tip.success('上传文件成功')
@@ -301,7 +301,7 @@ function onUploadFiles(e: any){
 		<ol class="breadcrumb">
 			<el-icon style="line-height: 30px; height: 30px; margin-right: 10px;"><i-position /></el-icon>
 			<li class="breadcrumb-item">
-				<a href="#" @click="router('/')">/{{ state.server.name }}</a>
+				<a href="#" @click="router('/')">/根目录</a>
 			</li>
 			<li v-for="(item, index) in routerList" :key="index" :class="{ active: index === routerList.length - 1 }" class="breadcrumb-item">
 				<span v-if="index === routerList.length - 1">{{ item.name }}</span>
