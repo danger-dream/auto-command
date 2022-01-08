@@ -132,54 +132,52 @@ function onOpenSSH(serverId: string){
 		<el-button type="primary" @click="onRefreshInfo">刷新服务器信息</el-button>
 	</div>
 	<div style="width: 100%; height: calc(100% - 60px);">
-		<el-scrollbar height="100%">
-			<el-table :data="state.list" :default-sort="{ prop: 'state', order: 'ascending' }" style="width: 100%" size="small" border highlight-current-row>
-				<el-table-column type="index" label="序号" sortable width="50" align="center"></el-table-column>
-				<el-table-column prop="name" label="服务器名称" sortable align="center" show-overflow-tooltip>
-					<template #default="{row}">
-						<el-button type="text" v-if="row.state === ServerState.success" @click="onOpenSSH(row.id)">{{ row.name }}</el-button>
-						<span v-else>{{ row.name }}</span>
-					</template>
-				</el-table-column>
-				<el-table-column prop="host" label="服务器地址" sortable align="center" width="220" show-overflow-tooltip>
-					<template #default="{row}">
+		<el-table :data="state.list" :default-sort="{ prop: 'state', order: 'ascending' }" height="100%" size="small" border highlight-current-row>
+			<el-table-column type="index" label="序号" sortable width="50" align="center"></el-table-column>
+			<el-table-column prop="name" label="服务器名称" sortable align="center" show-overflow-tooltip>
+				<template #default="{row}">
+					<el-button type="text" v-if="row.state === ServerState.success" @click="onOpenSSH(row.id)">{{ row.name }}</el-button>
+					<span v-else>{{ row.name }}</span>
+				</template>
+			</el-table-column>
+			<el-table-column prop="host" label="服务器地址" sortable align="center" width="220" show-overflow-tooltip>
+				<template #default="{row}">
 						<span style="cursor: pointer;" @click="copy(`${ row.user }@${ row.host } -p ${ row.port }`)">
 							{{ row.user }}@{{ row.host }} -p {{ row.port }}
 						</span>
+				</template>
+			</el-table-column>
+			<el-table-column prop="sys" label="操作系统" sortable align="center" width="250" show-overflow-tooltip>
+				<template #default="{row}">
+					<template v-if="row.sys !== '-'">
+						<svg class="os-iconfont" aria-hidden="true">
+							<use :xlink:href="row.icon"></use>
+						</svg>
 					</template>
-				</el-table-column>
-				<el-table-column prop="sys" label="操作系统" sortable align="center" width="250" show-overflow-tooltip>
-					<template #default="{row}">
-						<template v-if="row.sys !== '-'">
-							<svg class="os-iconfont" aria-hidden="true">
-								<use :xlink:href="row.icon"></use>
-							</svg>
-						</template>
-						{{ row.sys }}
-					</template>
-				</el-table-column>
-				<el-table-column prop="arch" label="架构" sortable align="center" width="120"/>
-				<el-table-column prop="cpu" label="CPU" sortable align="center" width="100"/>
-				<el-table-column prop="mem" label="内存" sortable align="center" width="100"/>
-				<el-table-column prop="disk" label="磁盘空间" sortable align="center" width="100"/>
-				<el-table-column prop="state" label="状态" sortable align="center" width="150" show-overflow-tooltip>
-					<template #default="{ row }">
-						<div :style="{ color: getColor(row) }">
-							{{ row.state }}
-							<el-icon v-if="row.state === ServerState.connecting" class="is-loading"><i-loading/></el-icon>
-							<el-icon v-else style="cursor: pointer" title="刷新状态" @click="onRefreshInfo(row)"><i-refresh /></el-icon>
-						</div>
-					</template>
-				</el-table-column>
-				<el-table-column label="操作" align="center" width="200">
-					<template #default="{ row }">
-						<el-button type="text" @click="onEdit(row)">编辑</el-button>
-						<el-button type="text" @click="onCopy(row)" style="color: #E6A23C;">复制</el-button>
-						<el-button type="text" @click="onDelete(row)" style="color: #F56C6C;">删除</el-button>
-					</template>
-				</el-table-column>
-			</el-table>
-		</el-scrollbar>
+					{{ row.sys }}
+				</template>
+			</el-table-column>
+			<el-table-column prop="arch" label="架构" sortable align="center" width="120"/>
+			<el-table-column prop="cpu" label="CPU" sortable align="center" width="100"/>
+			<el-table-column prop="mem" label="内存" sortable align="center" width="100"/>
+			<el-table-column prop="disk" label="磁盘空间" sortable align="center" width="100"/>
+			<el-table-column prop="state" label="状态" sortable align="center" width="150" show-overflow-tooltip>
+				<template #default="{ row }">
+					<div :style="{ color: getColor(row) }">
+						{{ row.state }}
+						<el-icon v-if="row.state === ServerState.connecting" class="is-loading"><i-loading/></el-icon>
+						<el-icon v-else style="cursor: pointer" title="刷新状态" @click="onRefreshInfo(row)"><i-refresh /></el-icon>
+					</div>
+				</template>
+			</el-table-column>
+			<el-table-column label="操作" align="center" width="200">
+				<template #default="{ row }">
+					<el-button type="text" @click="onEdit(row)">编辑</el-button>
+					<el-button type="text" @click="onCopy(row)" style="color: #E6A23C;">复制</el-button>
+					<el-button type="text" @click="onDelete(row)" style="color: #F56C6C;">删除</el-button>
+				</template>
+			</el-table-column>
+		</el-table>
 	</div>
 	<el-dialog :title="state.form.id ? '编辑服务器' : '添加服务器'" v-model="state.dialogVisible" width="700px"
 	           @close="clear" :close-on-click-modal="!!state.form.id" center custom-class="shell-dialog">
