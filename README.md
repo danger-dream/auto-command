@@ -260,6 +260,8 @@ commands:
 | [ssh2-promise](https://github.com/sanketbajoria/ssh2-promise) | 参考部分代码实现                                                                                                                            |
 | [utf8](https://github.com/mathiasbynens/utf8.js) | 保留encode部分代码，集成至项目中                                                                                                                 |
 | [electerm](https://github.com/electerm/electerm) | 监控模块想法来源与这个工具， 代码是这部分 [run-cmd.js](https://github.com/electerm/electerm/blob/master/src/client/components/terminal-info/run-cmd.js) |
+| [multer](https://github.com/expressjs/multer) | 参考实现文件上传部分                                                                                                                          |
+| [busboy](https://github.com/mscdex/busboy) | 文件上传headers解析                                                                                                                       |
 
 ## Web Dependencies
 | module                       | 说明           |

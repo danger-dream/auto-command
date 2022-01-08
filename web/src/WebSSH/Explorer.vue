@@ -5,7 +5,11 @@ import WebSocketClient from "../lib/WebSocketClient";
 import {IServer} from "../types";
 import YLEventEmitter from "../lib/YLEventEmitter";
 import { date_format, formatByteSizeToStr, copy, tip, deepClone } from '../Utils'
+import axios from "axios";
+import {ElLoading} from "element-plus/es";
 
+const upload = ref<any>(null)
+const uploadDir = ref<any>(null)
 const ws = inject('ws') as WebSocketClient
 const event = inject('event') as YLEventEmitter
 type FileInfo = {
@@ -194,6 +198,7 @@ async function reloadFileList(){
 
 function router(path: string, fileInfo?: FileInfo){
 	if (fileInfo && fileInfo.isFile){
+		window.open(`${ window.location.origin }/server/download?id=${ state.server.id }&path=${ encodeURI(path) }`)
 		return
 	}
 	if (!fileInfo || (fileInfo && fileInfo.isDir)){
@@ -256,6 +261,39 @@ async function onExitPower(row: FileInfo){
 	state.dialogVisible = true
 }
 
+function onSelectFile(dir: boolean = false){
+	(dir ? uploadDir : upload).value.click()
+}
+
+function onUploadFiles(e: any){
+	const { target } = e
+	if (!target || !target.files || target.files.length < 1) return
+	const fd = new FormData()
+	fd.append('id', state.server.id + '')
+	fd.append('path', state.path)
+	for (const item of e.target.files){
+		fd.append("attachment", item);
+	}
+	const loadingInstance = ElLoading.service({
+		fullscreen: true, body: true, lock: true,
+		text: '正在上传文件，请稍后...'
+	}) as any
+	axios.post('/server/upload', fd).then((res) => {
+		loadingInstance.close()
+		if (res.data?.success){
+			tip.success('上传文件成功')
+			reloadFileList()
+		}else if (res.data?.msg){
+			tip.error('上传文件时发生错误:' + JSON.stringify(res.data.msg))
+		}else {
+			tip.error('上传文件时发生未知错误')
+		}
+	}).catch(e => {
+		loadingInstance.close()
+		tip.error('上传文件时发生错误:' + e.message)
+	})
+}
+
 </script>
 
 <template>
@@ -274,9 +312,15 @@ async function onExitPower(row: FileInfo){
 	<div class="header-right">
 		<div class="btn-group">
 			<el-button :icon="FolderAdd" style="margin-left: 10px;" @click="onMkdir">新建目录</el-button>
-			<el-button :icon="Upload">上传文件</el-button>
+			<el-button :icon="Upload" @click="onSelectFile(false)">上传文件</el-button>
+			<el-button @click="onSelectFile(true)">
+				<el-icon><svg class="icon" aria-hidden="true"><use xlink:href="#icon-upfolder"></use></svg></el-icon>
+				<span style="margin-left: 5px;">上传文件夹</span>
+			</el-button>
 			<el-button :icon="Location" @click="onGotoPath">跳转</el-button>
 			<span style="margin-left: 10px; color: red;">1. 点击权限列可编辑权限、2. 支持键盘操作、3. 重命名、删除操作前请自行确认，误操作可能导致数据丢失</span>
+			<input ref="upload" type="file" multiple @change="onUploadFiles" style="display: none;"/>
+			<input ref="uploadDir" type="file" webkitdirectory multiple @change="onUploadFiles" style="display: none;"/>
 		</div>
 		<div class="btn-group2">
 			<el-button :icon="Refresh" circle @click="reloadFileList" title="刷新"></el-button>

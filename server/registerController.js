@@ -67,11 +67,13 @@ function createClient(ws, req){
 	})
 }
 
+exports.websocketClients = clients
+
 exports.getAction = function (action){
 	return controllerMap[action]
 }
 
-exports.register = async function (app) {
+exports.register = function (app) {
 	app.ws('/api/:type', createClient)
 	
 	const rootPath = join(process.cwd(), './controller')
@@ -80,7 +82,7 @@ exports.register = async function (app) {
 		const filename = file.split('.')[0]
 		for (const key of Object.keys(module)){
 			if (key === 'init'){
-				await module.init(app, push)
+				module.init(app, push)
 				continue
 			}
 			const keyName = `${ filename }.${ key }`

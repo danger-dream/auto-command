@@ -1,7 +1,7 @@
-const multer = require('multer')
+const Busboy = require("busboy")
 const fs = require('fs')
-const { join, parse } = require('path')
-const { getAction } = require('../registerController')
+const { join, parse, basename } = require('path')
+const { getAction, websocketClients } = require('../registerController')
 const createWebSSH = require("../common/createWebSSH");
 const shell = require("../common/ssh-node.js");
 
@@ -13,12 +13,110 @@ if (!fs.existsSync(uploadPath)){
 	fs.mkdirSync(uploadPath)
 }
 
+/**
+ * @param id
+ * @returns {Error | import('../common/ssh-node').NodeSSH}
+ */
+function getClientById(id) {
+	if (!id) return new Error('Params Error')
+	const client = websocketClients.find(x => x.ssh && x.ssh[id])
+	if (!client) return new Error('Not Find Server')
+	return client.ssh[id]
+}
+
 module.exports = {
 	init(app){
-		app.post('/api/upload/:id', multer({dest: uploadPath}).any(), async function (req, res) {
-			//req.files[0].path
-			//req.files[0].filename
-			res.json({ success: true, url: '/upload/' + req.files[0].filename })
+		app.post('/server/upload', async function (req, res, next) {
+			if (!req.headers['content-type'].includes('multipart')) return next()
+			try {
+				let fileNumber = 0
+				/**
+				 * @type { any }
+				 */
+				const busboy = Busboy({headers: req.headers, preservePath: true})
+				let isDone = false
+				let errors = []
+				function done() {
+					if (fileNumber > 0) return;
+					if (isDone) return
+					isDone = true
+					req.unpipe(busboy)
+					req.on('readable', req.read.bind(req))
+					busboy.removeAllListeners()
+					if (errors.length){
+						res.json({ success: false, msg: errors })
+					}else {
+						res.json({ success: true })
+					}
+				}
+				
+				const body = {}
+				busboy.on('field', (key, value) => body[key] = value)
+				busboy.on('file', async function (partName, fileStream, { filename }) {
+					if (!filename) return fileStream.resume()
+					fileNumber++
+					let { id, path } = body
+					try {
+						if (!path) {
+							// noinspection ExceptionCaughtLocallyJS
+							throw new Error('错误的参数')
+						}
+						const ssh = getClientById(id)
+						const filepath = join(path, filename)
+						const fileinfo = parse(filepath)
+						if (!await ssh.exists(fileinfo.dir)){
+							const msg = await ssh.exec(`mkdir -p ${ fileinfo.dir }`)
+							if (msg){
+								// noinspection ExceptionCaughtLocallyJS
+								throw new Error('创建目录失败:' + msg)
+							}
+						}
+						let curDone = false
+						const serCurDone = () => {
+							if (curDone) return
+							curDone = true
+							fileNumber--
+							done()
+						}
+						const ws = await ssh.createWriteStream(filepath)
+						ws.on('error', (e) => errors.push({ filename, error: e }))
+						ws.on('finish', () => serCurDone)
+						fileStream.on('close', serCurDone).on('error', (e) => errors.push({ filename, error: e.message }))
+						fileStream.pipe(ws)
+					}catch (e) {
+						fileNumber--
+						errors.push({ filename, error: e.message })
+						return fileStream.resume()
+					}
+				})
+				busboy.on('error', function (err) {
+					errors.push({ filename: '', error: err.message })
+					done()
+				})
+				busboy.on('finish', () => done())
+				req.pipe(busboy)
+			} catch (err) {
+				return next(err)
+			}
+		})
+		
+		app.get('/server/download', async function (req, res){
+			let { id, path } = req.query
+			const error = (msg) => res.end(`<script>alert('${ msg }'); window.close()</script>`)
+			if (!id || !path) return error('Params Error')
+			let ssh = undefined;
+			try {
+				ssh = getClientById(id)
+			}catch (e) {
+				return error(e.message)
+			}
+			try {
+				path = decodeURI(path)
+				res.set('Content-Disposition', `attachment; filename="${ basename(path) }"`);
+				(await ssh.createReadStream(path)).pipe(res)
+			}catch (e) {
+				error('Get ReadStream Error：' + e.message)
+			}
 		})
 	},
 	requestWEBSSH(id, client){

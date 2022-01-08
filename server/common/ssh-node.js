@@ -421,4 +421,5 @@ class NodeSSH extends EventEmitter {
         }
     }
 }
+exports.NodeSSH = NodeSSH;
 module.exports = NodeSSH;

@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import '../assets/stat.iconfont'
 import {Refresh} from '@element-plus/icons-vue'
 import { reactive, inject, computed } from 'vue'
 import YLEventEmitter from "../lib/YLEventEmitter";

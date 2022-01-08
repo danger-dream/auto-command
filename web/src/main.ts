@@ -6,7 +6,7 @@ import App from './App.vue'
 import * as ElIconModules from '@element-plus/icons-vue'
 import './assets/FA5Pro/fontawesome.css'
 import './assets/base.scss'
-import './assets/os.iconfont.js'
+import './assets/iconfont.js'
 
 const app = createApp(App)
 // 屏蔽错误信息

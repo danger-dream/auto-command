@@ -69,4 +69,6 @@ class ExpressWs {
 		});
 	}
 }
-module.exports = ExpressWs
+module.exports = function (app){
+	new ExpressWs(app)
+}

@@ -6,6 +6,8 @@ module.exports = function historyApiFallback(options) {
 		const headers = req.headers;
 		if (req.method !== 'GET') {
 			return next();
+		} else if (!options.rewrites || options.rewrites.length < 1){
+			return next();
 		} else if (!headers || typeof headers.accept !== 'string') {
 			return next();
 		} else if (headers.accept.includes('application/json')) {
@@ -21,7 +23,6 @@ module.exports = function historyApiFallback(options) {
 			if (!match) continue
 			req.url = rewrite.to({ parsedUrl: parsedUrl, match: match, request: req })
 			return next();
-			
 		}
 		const pathname = parsedUrl.pathname;
 		if (pathname.lastIndexOf('.') > pathname.lastIndexOf('/') && options.disableDotRule !== true) {

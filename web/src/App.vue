@@ -3,10 +3,10 @@ import {onMounted, reactive, provide} from 'vue'
 import {ElLoading} from "element-plus"
 import WebSocketClient from "./lib/WebSocketClient";
 import Server from './Server.vue'
+import {SystemInfo} from "./types";
 //import Task from './Task/index.vue'
 //import ScriptEdit from './ScriptEdit/index.vue'
 //import Logger from './Logger.vue'
-import {SystemInfo} from "./types";
 
 const ws = new WebSocketClient('/api/base')
 provide('ws', ws)
