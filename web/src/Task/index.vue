@@ -102,5 +102,4 @@ watch(() => state.activeName, (v, old_value) => {
 		.el-tab-pane { height: 100%; width: 100%; }
 	}
 }
-
 </style>

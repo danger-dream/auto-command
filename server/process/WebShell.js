@@ -1,6 +1,6 @@
 const utf8 = require('../common/Utf8')
 const NodeSSH = require('../common/NodeSSH')
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const { sleep } = require('../common/utils')
 
 let server = undefined
 let shell = undefined

@@ -1,6 +1,6 @@
 const cluster = require('cluster')
 const NodeSSH = require("../common/NodeSSH.js");
-if (!cluster.default){
+if (!cluster.default) {
 	cluster.default = cluster
 }
 
@@ -21,8 +21,8 @@ class CreateWebShell {
 		this.exitFn = exitFn
 	}
 	
-	async start(){
-		if (!cluster.default.isPrimary){
+	async start() {
+		if (!cluster.default.isPrimary) {
 			throw new Error('当前不在主进程中')
 		}
 		this.shell = await NodeSSH.createConnect(this.server)
@@ -35,29 +35,31 @@ class CreateWebShell {
 		worker.on('exit', this.onExit.bind(this))
 		worker.on('online', this.onLine.bind(this))
 		worker.on('error', () => {})
-		this.reqClient.send('shell.create', { id: this.id })
+		this.reqClient.send('shell.create', {id: this.id})
 		return this
 	}
 	
-	send(action, data){
+	send(action, data) {
 		try {
-			this.worker.send({ action, data })
-		}catch {}
+			this.worker.send({action, data})
+		} catch {
+		}
 		return this
 	}
 	
-	setResClient(client){
+	setResClient(client) {
 		clearTimeout(this.closeTimeout)
-		if (this.resClient){
+		if (this.resClient) {
 			try {
 				this.resClient.close()
-			}catch {}
+			} catch {
+			}
 		}
 		this.resClient = client
 		let self = this
-		client.onExit(function (){
+		client.onExit(function () {
 			self.resClient = undefined
-			self.closeTimeout = setTimeout(function (){
+			self.closeTimeout = setTimeout(function () {
 				self.close()
 			}, 10 * 1000)
 		})
@@ -65,51 +67,56 @@ class CreateWebShell {
 		return this
 	}
 	
-	close(){
+	close() {
 		try {
 			this.send('close')
-		}catch {}
+		} catch {
+		}
 		try {
 			this.shell && this.shell.close()
-		}catch {}
+		} catch {
+		}
 		this.shell = undefined
 		setTimeout(() => {
 			try {
-				if (this.worker){
+				if (this.worker) {
 					this.worker.kill()
 				}
 				this.worker = undefined
-			}catch {}
+			} catch {
+			}
 		}, 1000 * 3)
 	}
 	
-	onLine(){
+	onLine() {
 		this.send('connect', this.server)
 	}
 	
-	onMessage(msg){
+	onMessage(msg) {
 		const event = msg.event
 		if (event === '__heartbeat') return
-		if (event === 'connect'){
-			this.reqClient.send(this.id, { event: 'ready' })
+		if (event === 'connect') {
+			this.reqClient.send(this.id, {event: 'ready'})
 			return;
 		}
 		if (!this.resClient) return;
 		try {
 			this.resClient.send(this.id, msg)
-		}catch {}
+		} catch {
+		}
 	}
 	
-	onExit(){
+	onExit() {
 		this.worker = undefined
-		if (this.resClient){
-			this.resClient.send(this.id, { event: 'exit' })
+		if (this.resClient) {
+			this.resClient.send(this.id, {event: 'exit'})
 		}
-		if (this.exitFn){
+		if (this.exitFn) {
 			this.exitFn()
 		}
 	}
 }
-module.exports = function (server, reqClient, exitFn){
+
+module.exports = function (server, reqClient, exitFn) {
 	return new CreateWebShell(server, reqClient, exitFn)
 }

@@ -16,7 +16,8 @@ export default defineConfig({
 		port: 3000,
 		proxy: {
 			'/api': { target: 'http://localhost:3010', ws: true },
-			'/server': 'http://localhost:3010'
+			'/shell': 'http://localhost:3010',
+			'/resources': 'http://localhost:3010'
 		}
 	}
 })

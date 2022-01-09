@@ -3,12 +3,10 @@ import {watch, inject, reactive, computed, nextTick, ref} from 'vue'
 import { FolderAdd, Upload, Search, Location, Refresh } from '@element-plus/icons-vue'
 import WebSocketClient from "../lib/WebSocketClient";
 import YLEventEmitter from "../lib/YLEventEmitter";
+import UploadView from '../components/Upload.vue'
 import { date_format, formatByteSizeToStr, copy, tip, deepClone } from '../Utils'
-import axios from "axios";
-import {ElLoading} from "element-plus/es";
 
 const upload = ref<any>(null)
-const uploadDir = ref<any>(null)
 const uuid = inject('uuid') as string
 const ws = inject('ws') as WebSocketClient
 const event = inject('event') as YLEventEmitter
@@ -247,53 +245,26 @@ async function onExitPower(row: FileInfo){
 	Object.assign(state.userGroups, await ws.send('shell.getUserGroups', uuid))
 	Object.assign(state.form, deepClone(row))
 	const mode = row.mode
-	state.powerCheck.user.r = (mode & 0b100000000) === 0b100000000
-	state.powerCheck.user.w = (mode & 0b10000000) === 0b10000000
-	state.powerCheck.user.x = (mode & 0b1000000) === 0b1000000
+	state.powerCheck.user.r = !!(mode>>> 8 & 1)
+	state.powerCheck.user.w = !!(mode>>> 7 & 1)
+	state.powerCheck.user.x = !!(mode>>> 6 & 1)
 	
-	state.powerCheck.group.r = (mode & 0b100000) === 0b100000
-	state.powerCheck.group.w = (mode & 0b10000) === 0b10000
-	state.powerCheck.group.x = (mode & 0b1000) === 0b1000
+	state.powerCheck.group.r = !!(mode>>> 5 & 1)
+	state.powerCheck.group.w = !!(mode>>> 4 & 1)
+	state.powerCheck.group.x = !!(mode>>> 3 & 1)
 	
-	state.powerCheck.other.r = (mode & 0b100) === 0b100
-	state.powerCheck.other.w = (mode & 0b10) === 0b10
-	state.powerCheck.other.x = (mode & 0b1) === 0b1
+	state.powerCheck.other.r = !!(mode>>> 2 & 1)
+	state.powerCheck.other.w = !!(mode>>> 1 & 1)
+	state.powerCheck.other.x = !!(mode & 0b1)
 	state.dialogVisible = true
 }
 
 function onSelectFile(dir: boolean = false){
-	(dir ? uploadDir : upload).value.click()
-}
-
-function onUploadFiles(e: any){
-	const { target } = e
-	if (!target || !target.files || target.files.length < 1) return
-	const fd = new FormData()
-	fd.append('id', uuid)
-	fd.append('path', state.path)
-	for (const item of e.target.files){
-		fd.append("attachment", item);
-	}
-	const loadingInstance = ElLoading.service({
-		fullscreen: true, body: true, lock: true,
-		text: '正在上传文件，请稍后...'
-	}) as any
-	axios.post('/shell/upload', fd).then((res) => {
-		loadingInstance.close()
-		if (res.data?.success){
-			tip.success('上传文件成功')
-			reloadFileList()
-		}else if (res.data?.msg){
-			tip.error('上传文件时发生错误:' + JSON.stringify(res.data.msg))
-		}else {
-			tip.error('上传文件时发生未知错误')
-		}
-	}).catch(e => {
-		loadingInstance.close()
-		tip.error('上传文件时发生错误:' + e.message)
+	upload.value.selectFile(dir, '/shell/upload', { id: uuid, path: state.path }, function (e?: Error){
+		if (e) return
+		reloadFileList()
 	})
 }
-
 </script>
 
 <template>
@@ -319,8 +290,7 @@ function onUploadFiles(e: any){
 			</el-button>
 			<el-button :icon="Location" @click="onGotoPath">跳转</el-button>
 			<span style="margin-left: 10px; color: red;">1. 点击权限列可编辑权限、2. 支持键盘操作、3. 重命名、删除操作前请自行确认，误操作可能导致数据丢失</span>
-			<input ref="upload" type="file" multiple @change="onUploadFiles" style="display: none;"/>
-			<input ref="uploadDir" type="file" webkitdirectory multiple @change="onUploadFiles" style="display: none;"/>
+			<upload-view ref="upload"/>
 		</div>
 		<div class="btn-group2">
 			<el-button :icon="Refresh" circle @click="reloadFileList" title="刷新"></el-button>

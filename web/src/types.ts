@@ -86,8 +86,10 @@ export enum TreeNodeType {
 export interface TreeNode {
 	id: string
 	label: string
+	path: string
 	type: TreeNodeType
 	source: any
-	children: TreeNode[]
-	router: boolean
+	children?: any[]
+	leaf?: boolean
+	tid?: string
 }

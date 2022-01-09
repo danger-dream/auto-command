@@ -1,4 +1,3 @@
-const stringFromCharCode = String.fromCharCode;
 let byteArray;
 let byteCount;
 let byteIndex;
@@ -110,10 +109,10 @@ function ucs2encode(array) {
 		value = array[index];
 		if (value > 0xFFFF) {
 			value -= 0x10000;
-			output += stringFromCharCode(value >>> 10 & 0x3FF | 0xD800);
+			output += String.fromCharCode(value >>> 10 & 0x3FF | 0xD800);
 			value = 0xDC00 | value & 0x3FF;
 		}
-		output += stringFromCharCode(value);
+		output += String.fromCharCode(value);
 	}
 	return output;
 }

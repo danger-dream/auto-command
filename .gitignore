@@ -9,3 +9,5 @@ server/db/*
 temp
 yarn.lock
 package-lock.json
+server/resources
+server/test

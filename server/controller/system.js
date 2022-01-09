@@ -1,5 +1,5 @@
 const os = require("os");
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const { sleep } = require('../common/utils')
 
 function getLocalIp(){
 	const interfaces = os.networkInterfaces();

@@ -17,7 +17,6 @@ app.all('*', function (req, res, next) {
 
 ExpressWs(app)
 app.use(history())
-app.use('/static', express.static('static'))
 if (existsSync('./dist')){
 	app.use(express.static('dist'))
 } else {
