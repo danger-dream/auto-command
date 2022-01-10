@@ -53,6 +53,29 @@
 
 ---
 
+## Getting started
+
+```bash
+# clone the project
+git clone https://github.com/hlxxzt/auto-command.git
+
+# enter the project web directory
+cd auto-command/web
+
+# install dependency and build
+yarn && yarn build
+
+# enter the project server directory
+cd ../server
+
+# install server dependency and run server
+yarn && yarn run start
+```
+
+browser open http://localhost:3100
+
+---
+
 ## images
 
 <img src="./images/home.png" />
