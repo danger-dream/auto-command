@@ -1,5 +1,4 @@
 # Auto Command
-Without using a database, the data is stored in a JSON file
 
 ## features
 - only use [Node.js](https://nodejs.org/en/)
