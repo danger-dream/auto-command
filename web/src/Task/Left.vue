@@ -1,14 +1,21 @@
 <script setup lang="ts">
 import {inject, reactive, ref} from 'vue'
 import WebSocketClient from "../lib/WebSocketClient";
-import {TreeNode, TreeNodeType} from "../types";
+import {TabInfo, TreeNode, TreeNodeType} from "../types";
 import type Node from 'element-plus/es/components/tree/src/model/node'
 import UploadView from '../components/Upload.vue'
 import {tip} from "../Utils";
+import YLEventEmitter from "../lib/YLEventEmitter";
+import {languages} from 'monaco-editor'
+import ImageView from './components/Images.vue'
+import TaskView from './components/Task.vue'
+import TextEditView from './components/TextEdit.vue'
 
 const ws = inject('ws') as WebSocketClient
+const event = inject('event') as YLEventEmitter
 const tree = ref<any>(null)
 const upload = ref<any>(null)
+const imageView = ref<any>(null)
 const state = reactive({
 	searchValue: '',
 	nodes: [] as TreeNode[],
@@ -40,7 +47,7 @@ async function loadResources(tn: TreeNode): Promise<TreeNode[]>{
 		id = tn.tid
 	}
 	const res = await ws.send('resources.list', { path, id }) as any[]
-	return res.map(x => file2TreeNode(x)).sort((a, b) => {
+	return res.map(x => file2TreeNode(x, id)).sort((a, b) => {
 		if (a.source.dir && b.source.dir){
 			return a.label.localeCompare(b.label)
 		}else {
@@ -73,11 +80,11 @@ function filterNode(){
 }
 
 function getNodeClass(data: TreeNode){
-	return { 0: 'far fa-cloud', 1: 'far fa-folder', 2: 'far fa-file', 3: 'far fa-cubes' }[data.type]
+	return ({ 1: 'far fa-folder', 2: 'far fa-file' } as any)[data.type]
 }
 
 function getNodeColor(data: TreeNode){
-	return { 0: '#67C23A', 1: '#E6A23C', 2: '', 3: '#409EFF' }[data.type]
+	return ({ 1: '#E6A23C', 2: '' } as any)[data.type]
 }
 
 function handleCommand(command: string){
@@ -95,10 +102,7 @@ function handleCommand(command: string){
 type BtnAction = 'task' | 'mkdir' | 'upload' | 'rename' | 'delete' | 'refresh'
 async function onBtnClick(action: BtnAction){
 	if (isDisable(action)) return
-	if (action === 'task'){
-		//  todo create task
-		return
-	} else if (action === 'refresh'){
+	if (action === 'refresh'){
 		rootNodeFN.node.childNodes = []
 		loadNode(rootNodeFN.node, rootNodeFN.resolve).then(() => {})
 		return
@@ -108,11 +112,19 @@ async function onBtnClick(action: BtnAction){
 	}
 	if (!state.currentNode) return;
 	const node = state.currentNode
-	let title = { mkdir: '新建目录', rename: '重命名', delete: '删除' }[action]
+	let title = { task: '新建任务', mkdir: '新建目录', rename: '重命名', delete: '删除' }[action]
 	let id = node.type === TreeNodeType.task ? node.id : (node.tid || '')
 	let res = false
 	try {
 		switch (action){
+			case "task":
+				const taskName = await tip.prompt('请输入任务名称', title)
+				if (!taskName) return
+				res = await ws.send('resources.createTask', taskName)
+				if (res){
+					await onBtnClick('refresh')
+				}
+				break
 			case 'mkdir':
 				const name = await tip.prompt('请输入目录名称', title)
 				if (!name) return
@@ -163,10 +175,50 @@ function isDisable(type: BtnAction): boolean {
 	}
 }
 
+function onDblClickNode(node: TreeNode){
+	if (node.type === TreeNodeType.public || node.type === TreeNodeType.dir) return
+	let label = node.label
+	if (node.type === TreeNodeType.task){
+		event.emit('SetTabView', {
+			label, name: 'task-' + node.id, component: TaskView,
+			svg: '#icon-task', params: node.source
+		})
+	}else {
+		let ext = label.split('.').slice(-1)[0].toLowerCase()
+		if (['bmp', 'tif', 'gif', 'jpeg', 'tga', 'jpg', 'svg', 'png', 'ico'].includes(ext)){
+			imageView.value.show('/resources/download?id=' + (node.tid || '') + '&path=' + node.path)
+		} else {
+			if (node.source.size > 1024 * 1024 * 10){
+				tip.warn('该文件大于10MB，无法在线编辑')
+				return
+			}
+			let language = ''
+			for (const item of languages.getLanguages()){
+				if (item.extensions?.includes(ext)){
+					language = item.id
+					break
+				}
+			}
+			if(!language && ext === label) {
+				language = 'plaintext'
+			}
+			if (!language){
+				tip.warn('未识别当前文件')
+				language = 'plaintext'
+			}
+			event.emit('SetTabView', {
+				label, name: 'text-' + node.id, component: TextEditView,
+				svg: '#icon-text', params: Object.assign({ id: node.tid, language }, node.source)
+			})
+		}
+	}
+}
+
 </script>
 
 <template>
 	<upload-view ref="upload"/>
+	<image-view ref="imageView"></image-view>
 	<header>
 		<el-input v-model="state.searchValue" placeholder="输入查找" style="width: 100%;margin-bottom: 1px;">
 			<template #prefix>
@@ -175,29 +227,31 @@ function isDisable(type: BtnAction): boolean {
 		</el-input>
 		<div class="header-btn-box" style='margin: 5px 0;'>
 			<el-tooltip effect="light" content="创建任务" info:enterable="false" placement="bottom" :show-after="400" transition=" ">
-				<i @click="onBtnClick('task')" class="far fa-cubes" :class="{ disabled: isDisable('task') }"></i>
+				<el-icon @click="onBtnClick('task')" :class="{ disabled: isDisable('task') }">
+					<svg class="icon" aria-hidden="true"><use xlink:href="#icon-task"></use></svg>
+				</el-icon>
 			</el-tooltip>
 			<el-tooltip effect="light" content="新建目录" info:enterable="false" placement="bottom" :show-after="400" transition=" ">
-				<i @click="onBtnClick('mkdir')" class="far fa-folder" :class="{ disabled: !state.currentNode }"></i>
+				<i @click="onBtnClick('mkdir')" class="far fa-folder" :class="{ disabled: isDisable('mkdir') }"></i>
 			</el-tooltip>
-			<el-dropdown @command="handleCommand">
-				<i @click="onBtnClick('upload')" class="far fa-upload" :class="{ disabled: !state.currentNode }"></i>
+			<el-dropdown @command="handleCommand" style="float: left;margin-right: 5px;">
+				<i class="far fa-upload" :class="{ disabled: isDisable('upload') }"></i>
 				<template #dropdown>
 					<el-dropdown-menu>
-						<el-dropdown-item command="file">上传文件</el-dropdown-item>
-						<el-dropdown-item command="dir">上传目录</el-dropdown-item>
+						<el-dropdown-item command="file" :disabled="isDisable('upload')">上传文件</el-dropdown-item>
+						<el-dropdown-item command="dir" :disabled="isDisable('upload')">上传目录</el-dropdown-item>
 					</el-dropdown-menu>
 				</template>
 			</el-dropdown>
 			<el-tooltip effect="light" content="重命名" info:enterable="false" placement="bottom" :show-after="400" transition=" ">
-				<i @click="onBtnClick('rename')" class="far fa-edit" :class="{ disabled: !state.currentNode }"></i>
+				<i @click="onBtnClick('rename')" class="far fa-edit" :class="{ disabled: isDisable('rename') }"></i>
 			</el-tooltip>
 			<el-tooltip effect="light" content="删除" info:enterable="false" placement="bottom" :show-after="400" transition=" ">
-				<i @click="onBtnClick('delete')" class="fal fa-trash" :class="{ disabled: !state.currentNode || state.currentNode?.id === 'public' }"></i>
+				<i @click="onBtnClick('delete')" class="fal fa-trash" :class="{ disabled: isDisable('delete') }"></i>
 			</el-tooltip>
 			<div class="right">
 				<el-tooltip effect="light" content="刷新" info:enterable="false" placement="bottom" :show-after="200" transition=" ">
-					<i @click="onBtnClick('refresh')" class="fas fa-sync-alt" style="margin-left: 5px;"></i>
+					<el-icon @click="onBtnClick('refresh')"><i-refresh/></el-icon>
 				</el-tooltip>
 			</div>
 		</div>
@@ -205,10 +259,17 @@ function isDisable(type: BtnAction): boolean {
 	<div class="sidebar-tree-box" @contextmenu.prevent="() => {return false}">
 		<el-scrollbar style='height: 100%;'>
 			<el-tree class="sidebar-tree" :props="props" :load="loadNode" lazy node-key="id" highlight-current ref="tree"
-			         @current-change="(n) => state.currentNode = n" :expand-on-click-node="false" :filter-node-method="filterNode">
+			         @current-change="(n) => state.currentNode = n" :expand-on-click-node="false" :filter-node-method="filterNode"
+			         @node-contextmenu="(event, data) => onDblClickNode(data)">
 				<template #default="{ node, data }">
-					<div class="sidebar-tree-node">
-						<i :class="getNodeClass(data)" :style="{ color: getNodeColor(data) }"></i>
+					<div class="sidebar-tree-node" @dblclick.stop="onDblClickNode(data)">
+						<el-icon v-if="data.type === TreeNodeType.public" style="float: left;" color="#409EFF">
+							<svg class="icon" aria-hidden="true"><use xlink:href="#icon-public"></use></svg>
+						</el-icon>
+						<el-icon v-else-if="data.type === TreeNodeType.task" style="float: left;" color="#67C23A">
+							<svg class="icon" aria-hidden="true"><use xlink:href="#icon-task"></use></svg>
+						</el-icon>
+						<i v-else :class="getNodeClass(data)" :style="{ color: getNodeColor(data) }"></i>
 						<span>{{ node.label }}</span>
 					</div>
 				</template>
@@ -228,6 +289,7 @@ function isDisable(type: BtnAction): boolean {
 	line-height: 30px; height: 30px; width: 100%;
 	i {
 		font-size: 20px;color: #797979;cursor: pointer;padding: 5px; border-radius: 4px; margin-right: 5px;
+		float: left;
 		&:hover { color: rgba(225, 113, 23, 1) }
 		&:active { color: rgba(225, 113, 23, 1) }
 		&.disabled {
@@ -263,16 +325,23 @@ function isDisable(type: BtnAction): boolean {
 </style>
 
 <style scoped lang="scss">
-header {padding: 10px 15px 0;height: 75px;border-bottom: 1px solid #6f6d6d1c;}
+header {
+	padding: 10px 15px 0;height: 75px;border-bottom: 1px solid #6f6d6d1c;user-select: none;
+	-webkit-touch-callout: none; /* iOS Safari */
+	-webkit-user-select: none; /* Chrome/Safari/Opera */
+}
 
 .sidebar-tree-box {
 	height: calc(100% - 75px);padding: 10px;
+	user-select: none;
+	-webkit-touch-callout: none; /* iOS Safari */
+	-webkit-user-select: none; /* Chrome/Safari/Opera */
 	
 	.sidebar-tree {
 		.sidebar-tree-node {
-			line-height: 35px; height: 35px;
-			i { font-size: 20px; width: 25px; margin-right: 5px; color: #8d8d8d; }
-			span { font-size: 17px; padding-top: 2px; color: #333333; }
+			line-height: 35px; height: 35px; --color: #8d8d8d;
+			i { line-height: 35px; height: 35px;font-size: 20px; width: 25px; margin-right: 5px; color: var(--color); }
+			span { line-height: 35px; height: 35px;font-size: 17px; padding-top: 2px; color: #333333; }
 		}
 	}
 }

@@ -71,8 +71,9 @@ export interface RemoteSystemInfo {
 export interface TabInfo {
 	label: string
 	name: string
-	componentName: string
-	icon: string
+	component: any
+	icon?: string
+	svg?: string
 	params: any
 }
 

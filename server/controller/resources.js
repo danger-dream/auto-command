@@ -1,5 +1,5 @@
 const { statSync, existsSync, mkdirSync, createWriteStream, createReadStream, readdirSync, writeFileSync, readFileSync, renameSync } = require('fs')
-const { join, parse, relative } = require('path')
+const { join, parse, relative, basename} = require('path')
 const UploadHandle = require("../common/UploadHandle");
 const {uuid, rmf} = require("../common/utils");
 const TASKPREFIX = 'AC-TASK-'
@@ -54,12 +54,30 @@ module.exports = {
 				done(e)
 			}
 		}))
-		app.get('/resources', function (req, res){
+		app.get('/resources/download', function (req, res){
 			let { id, path } = req.query
 			if (!path) return res.end('错误的参数')
 			path = formatPath(path)
 			const filepath = id ? join(taskId2Path(id), path) :join(ResourcePath, path)
+			res.set('Content-Disposition', `attachment; filename="${ basename(filepath) }"`);
 			createReadStream(filepath).pipe(res)
+		})
+		app.get('/resources/read', function (req, res){
+			let { id, path } = req.query
+			if (!path) return res.end('错误的参数')
+			path = formatPath(path)
+			const filepath = id ? join(taskId2Path(id), path) :join(ResourcePath, path)
+			res.json({
+				success: true,
+				text: readFileSync(filepath).toString()
+			})
+		})
+		app.post('/resources/write', function (req, res){
+			let { id, path, txt } = req.body
+			if (!path) return res.end('错误的参数')
+			path = formatPath(path)
+			writeFileSync(id ? join(taskId2Path(id), path) :join(ResourcePath, path), txt)
+			res.json({ success: true })
 		})
 	},
 	/**
@@ -70,9 +88,9 @@ module.exports = {
 	list({ id, path }){
 		if (!path) throw new Error('错误的参数')
 		path = formatPath(path)
-		const curPath = id ? join(taskId2Path(id), path) :join(ResourcePath, path)
+		const rootPath = id ? taskId2Path(id) :ResourcePath
+		const curPath = join(rootPath, path)
 		if (!existsSync(curPath)) return []
-		const rootPath = id ? join(ResourcePath, id) : ResourcePath
 		return readdirSync(curPath).
 			filter(x => !x.startsWith(TASKPREFIX)).
 			map(x => {

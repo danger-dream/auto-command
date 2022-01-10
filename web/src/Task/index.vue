@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, provide, watch, nextTick } from 'vue'
 import YLEventEmitter from "../lib/YLEventEmitter";
-import TaskLeft from './left.vue'
+import TaskLeft from './Left.vue'
 import {TabInfo} from "../types";
 const event = new YLEventEmitter()
 provide('event', event)
@@ -19,7 +19,7 @@ const addTabView = (tab: TabInfo) => {
 	state.activeName = tab.name
 }
 
-event.on('set-tab-view', (tab: TabInfo) => addTabView(tab))
+event.on('SetTabView', (tab: TabInfo) => addTabView(tab))
 function onTabRemove(name: string) {
 	const index = state.tabs.findIndex(x => x.name === name)
 	if (index >= 0){
@@ -50,9 +50,12 @@ watch(() => state.activeName, (v, old_value) => {
 		<el-tabs v-if='state.tabs.length > 0' class="right-tabs" v-model="state.activeName" type="card" closable @tab-remove='onTabRemove'>
 			<el-tab-pane v-for='item in state.tabs' :label="item.label" :name="item.name">
 				<template #label>
-					<span><i :class="item.icon"></i> {{ item.label }}</span>
+					<el-icon style="float: left; height: 33px; line-height: 33px; margin-right: 5px;" :size="18">
+						<svg class="icon" aria-hidden="true"><use :xlink:href="item.svg"></use></svg>
+					</el-icon>
+					{{ item.label }}
 				</template>
-				<component :is="item.componentName" :cid="item.name" :params='item.params' @close='onTabRemove(item.name)'></component>
+				<component :is="item.component" :params='item.params' @close='onTabRemove(item.name)'></component>
 			</el-tab-pane>
 		</el-tabs>
 		<div v-else class="info">

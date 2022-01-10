@@ -3,7 +3,7 @@ import {provide, onMounted, reactive, nextTick, watch, computed} from 'vue'
 import {ElLoading} from "element-plus"
 import {getQueryVariable, getOSIcon, calcTime, formatByteSizeToStr} from '../Utils'
 import {IServer, RemoteSystemInfo} from '../types'
-import IconFont from '../iconfont.vue';
+import IconFont from '../components/IconFont.vue';
 import WebSocketClient from "../lib/WebSocketClient";
 import YLEventEmitter from "../lib/YLEventEmitter";
 import Explorer from './Explorer.vue'

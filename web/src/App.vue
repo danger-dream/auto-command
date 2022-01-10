@@ -2,7 +2,7 @@
 import {onMounted, reactive, provide} from 'vue'
 import {ElLoading} from "element-plus"
 import WebSocketClient from "./lib/WebSocketClient";
-import IconFont from './IconFont.vue'
+import IconFont from './components/IconFont.vue'
 import Server from './Server.vue'
 import {SystemInfo} from "./types";
 import Task from './Task/index.vue'
